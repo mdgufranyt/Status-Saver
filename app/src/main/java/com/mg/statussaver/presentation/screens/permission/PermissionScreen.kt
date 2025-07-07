@@ -1,7 +1,12 @@
 package com.mg.statussaver.presentation.screens.permission
 
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,7 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -49,10 +53,35 @@ fun PermissionScreen(
     onPermissionGranted: () -> Unit
 ) {
     val context = LocalContext.current
-    val activity = context as ComponentActivity
 
     var showFolderSelection by remember { mutableStateOf(false) }
     var permissionGranted by remember { mutableStateOf(false) }
+
+    // Custom launcher for WhatsApp folder navigation
+    val whatsAppFolderLauncher = rememberLauncherForActivityResult(
+        contract = object : ActivityResultContract<Unit, Uri?>() {
+            override fun createIntent(context: Context, input: Unit): Intent {
+                return permissionManager.createWhatsAppStatusFolderIntent()
+            }
+
+            override fun parseResult(resultCode: Int, intent: Intent?): Uri? {
+                return if (resultCode == Activity.RESULT_OK && intent != null) {
+                    intent.data
+                } else {
+                    null
+                }
+            }
+        }
+    ) { uri ->
+        uri?.let {
+            // Save the folder URI
+            permissionManager.saveStatusFolderUri(it)
+            onPermissionGranted()
+        } ?: run {
+            // If user cancelled or failed, show manual selection
+            showFolderSelection = true
+        }
+    }
 
     // Storage permission launcher
     val storagePermissionLauncher = rememberLauncherForActivityResult(
@@ -62,10 +91,12 @@ fun PermissionScreen(
         if (granted) {
             permissionGranted = true
             permissionManager.setPermissionGranted(true)
+            // Automatically launch folder selection with WhatsApp status folder navigation
+            whatsAppFolderLauncher.launch(Unit)
         }
     }
 
-    // Folder selection launcher
+    // Folder selection launcher for manual selection
     val folderSelectionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
@@ -155,8 +186,8 @@ fun PermissionScreen(
                         }
                     }
                 }
-            } else if (permissionGranted || showFolderSelection) {
-                // Folder Selection Step
+            } else {
+                // Folder Selection Step (shown when permissions granted or manual selection needed)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -235,20 +266,22 @@ fun PermissionScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        if (showFolderSelection) {
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                        OutlinedButton(
-                            onClick = {
-                                showFolderSelection = false
-                                permissionGranted = false
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = "Back",
-                                fontSize = 16.sp
-                            )
+                            OutlinedButton(
+                                onClick = {
+                                    showFolderSelection = false
+                                    permissionGranted = false
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = "Back",
+                                    fontSize = 16.sp
+                                )
+                            }
                         }
                     }
                 }

@@ -142,6 +142,23 @@ class PermissionManager @Inject constructor(
         return intent
     }
 
+    fun createWhatsAppStatusFolderIntent(): Intent {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+
+        // Try to set initial URI to WhatsApp status folder
+        try {
+            val whatsappStatusUri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3AAndroid%2Fmedia%2Fcom.whatsapp%2FWhatsApp%2FMedia%2F.Statuses")
+            intent.putExtra("android.provider.extra.INITIAL_URI", whatsappStatusUri)
+        } catch (e: Exception) {
+            // If setting initial URI fails, fall back to regular folder picker
+        }
+
+        return intent
+    }
+
     fun shouldShowRationale(activity: Activity): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ActivityCompat.shouldShowRequestPermissionRationale(
