@@ -4,7 +4,6 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,15 +11,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
@@ -35,11 +37,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.mg.statussaver.R
 import com.mg.statussaver.data.preferences.LanguagePreferences
 
 /**
@@ -50,9 +50,11 @@ data class Language(
     val displayName: String
 )
 
+
 /**
+
  * Language Selection Screen for WhatsApp Status Saver App
- * Features modern UI with app branding and comprehensive Indian language support
+ * Features modern UI with top bar and comprehensive Indian language support
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,58 +76,94 @@ fun LanguageSelectionScreen(navController: NavController? = null) {
     var selectedLanguage by remember { mutableStateOf<Language?>(null) }
     val context = LocalContext.current
 
-    Box(
+    Column(
         modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .fillMaxSize().background(Color.Black)
+//            .background(MaterialTheme.colorScheme.background)
     ) {
+        // Top Bar with Title and Continue Icon
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left side - Title and Subtitle
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                // Title
+                Text(
+                    text = "Select Language",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+
+                // Subtitle
+                Text(
+                    text = "Choose your preferred language",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                    ),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            // Right side - Continue Icon Button
+            IconButton(
+                onClick = {
+                    if (selectedLanguage != null) {
+                        // Save the selected language
+                        val languagePreferences = LanguagePreferences(context)
+                        languagePreferences.saveSelectedLanguage(selectedLanguage!!.code)
+
+                        // Navigate to home screen
+                        navController?.navigate("home") {
+                            popUpTo("language") { inclusive = true }
+                        }
+                    } else {
+                        Toast.makeText(context, "Please select a language", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                enabled = selectedLanguage != null,
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        color = if (selectedLanguage != null)
+                            Color(0xFF00B09C)
+                        else
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Continue",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+
+        // Divider line
+//        HorizontalDivider(
+//            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
+//            thickness = 1.dp
+//        )
+
+        // Language List
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Header content
+            // Top spacing
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // App Name
-                    Text(
-                        text = "WhatsApp Status Saver",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        ),
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Title
-                    Text(
-                        text = "Select Language",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        ),
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Subtitle
-                    Text(
-                        text = "Choose your preferred language to continue",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                        ),
-                        textAlign = TextAlign.Center
-                    )
-                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             // Language items
@@ -137,49 +175,11 @@ fun LanguageSelectionScreen(navController: NavController? = null) {
                 )
             }
 
-            // Bottom spacing for button
+            // Bottom spacing
             item {
-                Spacer(modifier = Modifier.height(100.dp))
+
+                Spacer(modifier = Modifier.height(24.dp))
             }
-        }
-
-        // Continue Button - Fixed at bottom
-        Button(
-            onClick = {
-                if (selectedLanguage != null) {
-                    // Save the selected language
-                    val languagePreferences = LanguagePreferences(context)
-                    languagePreferences.saveSelectedLanguage(selectedLanguage!!.code)
-
-                    // Navigate to appropriate home screen based on selected language
-                    navController?.navigate("home") {
-                        popUpTo("language") { inclusive = true }
-                    }
-                } else {
-                    Toast.makeText(context, "Please select a language", Toast.LENGTH_SHORT).show()
-                }
-            },
-            enabled = selectedLanguage != null,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(24.dp)
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (selectedLanguage != null)
-                    Color(0xFF00B09C)
-                else
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-            )
-        ) {
-            Text(
-                text = "Continue",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.SemiBold
-                )
-            )
         }
     }
 }

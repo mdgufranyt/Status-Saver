@@ -39,7 +39,7 @@ fun StatusSaverNavGraph(navController: NavHostController) {
                 onDirectChatClick = {
                     navController.navigate(Routes.DIRECT_CHAT)
                 },
-                onNavigateToSaved = {
+                onNavigateToDownloads = {
                     navController.navigate(Routes.SAVED)
                 },
                 onNavigateToSettings = {
@@ -47,7 +47,7 @@ fun StatusSaverNavGraph(navController: NavHostController) {
                 },
                 onNavigateToLanguage = {
                     navController.navigate(Routes.LANGUAGE)
-                }
+                },
             )
         }
         composable(Routes.SAVED) {

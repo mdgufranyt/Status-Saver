@@ -24,6 +24,10 @@ object PermissionUtils {
             ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.READ_MEDIA_VIDEO
+            ) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
             ) == PackageManager.PERMISSION_GRANTED
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // Android 11+ - Check for external storage access
@@ -52,10 +56,11 @@ object PermissionUtils {
             // Android 13+ - Request media permissions
             arrayOf(
                 Manifest.permission.READ_MEDIA_IMAGES,
-                Manifest.permission.READ_MEDIA_VIDEO
+                Manifest.permission.READ_MEDIA_VIDEO,
+                Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
             )
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+ - Request external storage permission
+            // Android 11+ - Request external storage access
             arrayOf(
                 Manifest.permission.READ_EXTERNAL_STORAGE
             )
@@ -110,5 +115,26 @@ object PermissionUtils {
      */
     fun getPermissionDeniedMessage(): String {
         return "Storage permission is required to access WhatsApp statuses. Please grant permission in Settings."
+    }
+
+    /**
+     * Check if we should show rationale for storage permissions
+     */
+    fun shouldShowPermissionRationale(context: Context): Boolean {
+        val requiredPermissions = getRequiredStoragePermissions()
+        return requiredPermissions.any { permission ->
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_DENIED
+        }
+    }
+
+    /**
+     * Check if app has all file access (for Android 11+)
+     */
+    fun hasAllFilesAccess(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            android.os.Environment.isExternalStorageManager()
+        } else {
+            true // Not needed for older versions
+        }
     }
 }

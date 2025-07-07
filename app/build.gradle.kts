@@ -54,6 +54,7 @@ dependencies {
     implementation("androidx.compose.foundation:foundation:1.8.3")
     implementation("androidx.media3:media3-exoplayer:1.7.1")
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    implementation("androidx.documentfile:documentfile:1.1.0")
     debugImplementation("androidx.compose.ui:ui-tooling:1.8.3")
     implementation("androidx.navigation:navigation-compose:2.9.0")
     implementation("androidx.compose.material3:material3-window-size-class:1.3.2")
