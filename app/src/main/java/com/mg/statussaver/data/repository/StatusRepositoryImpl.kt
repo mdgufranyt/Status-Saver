@@ -36,7 +36,7 @@ class StatusRepositoryImpl @Inject constructor(
     )
 
     private val savedStatusPath = Environment.getExternalStorageDirectory().toString() + "/Status Saver"
-    private val publicSavedPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).toString() + "/Status Saver"
+    private val publicSavedPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toString() + "/StatusSaver"
     private val appSpecificPath = Environment.getExternalStorageDirectory().toString() + "/Android/media/com.mg.statussaver/Status Saver"
 
     override suspend fun getWhatsAppStatuses(): List<StatusItem> = withContext(Dispatchers.IO) {
@@ -96,86 +96,296 @@ class StatusRepositoryImpl @Inject constructor(
 
     override suspend fun downloadStatus(status: StatusItem): StatusRepository.DownloadResult = withContext(Dispatchers.IO) {
         try {
-            val srcFile = File(status.path)
-            if (!srcFile.exists()) {
+            android.util.Log.d("DownloadStatus", "Attempting to download: ${status.path}")
+
+            // Check if this is a content URI or file path
+            if (status.path.startsWith("content://")) {
+                android.util.Log.d("DownloadStatus", "Handling content URI")
+                return@withContext handleContentUriDownload(status)
+            } else {
+                android.util.Log.d("DownloadStatus", "Handling file path")
+                return@withContext handleFilePathDownload(status)
+            }
+
+        } catch (e: Exception) {
+            android.util.Log.e("DownloadStatus", "Download exception", e)
+            e.printStackTrace()
+            return@withContext StatusRepository.DownloadResult(
+                success = false,
+                errorMessage = "Download failed: ${e.message}"
+            )
+        }
+    }
+
+    private suspend fun handleContentUriDownload(status: StatusItem): StatusRepository.DownloadResult = withContext(Dispatchers.IO) {
+        try {
+            val uri = Uri.parse(status.path)
+            android.util.Log.d("DownloadStatus", "Parsed URI: $uri")
+
+            // Extract filename from the URI
+            val fileName = extractFileNameFromUri(uri) ?: run {
+                android.util.Log.e("DownloadStatus", "Could not extract filename from URI")
                 return@withContext StatusRepository.DownloadResult(
                     success = false,
-                    errorMessage = "Source file not found"
+                    errorMessage = "Could not determine filename from URI"
                 )
             }
 
-            // Create public directory in Pictures folder
+            android.util.Log.d("DownloadStatus", "Extracted filename: $fileName")
+
+            // Create download directory
+            val downloadDir = File(publicSavedPath)
+            if (!downloadDir.exists()) {
+                val created = downloadDir.mkdirs()
+                if (!created) {
+                    return@withContext StatusRepository.DownloadResult(
+                        success = false,
+                        errorMessage = "Failed to create download directory"
+                    )
+                }
+            }
+
+            // Generate unique filename if needed
+            val nameWithoutExt = fileName.substringBeforeLast('.')
+            val ext = fileName.substringAfterLast('.')
+            val timestamp = System.currentTimeMillis()
+            val uniqueFileName = if (File(downloadDir, fileName).exists()) {
+                "${nameWithoutExt}_$timestamp.$ext"
+            } else {
+                fileName
+            }
+
+            val destFile = File(downloadDir, uniqueFileName)
+
+            // Copy content from URI to destination file
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                destFile.outputStream().use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            } ?: run {
+                android.util.Log.e("DownloadStatus", "Could not open input stream from URI")
+                return@withContext StatusRepository.DownloadResult(
+                    success = false,
+                    errorMessage = "Could not access source file"
+                )
+            }
+
+            // Verify the copy was successful
+            if (!destFile.exists() || destFile.length() == 0L) {
+                android.util.Log.e("DownloadStatus", "File copy verification failed")
+                return@withContext StatusRepository.DownloadResult(
+                    success = false,
+                    errorMessage = "File copy verification failed"
+                )
+            }
+
+            android.util.Log.d("DownloadStatus", "Successfully copied file to: ${destFile.absolutePath}")
+
+            // Notify media scanner
+            try {
+                val mediaScanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+                mediaScanIntent.data = Uri.fromFile(destFile)
+                context.sendBroadcast(mediaScanIntent)
+            } catch (e: Exception) {
+                android.util.Log.w("DownloadStatus", "Media scanner notification failed", e)
+            }
+
+            return@withContext StatusRepository.DownloadResult(
+                success = true,
+                savedPath = destFile.absolutePath
+            )
+
+        } catch (e: Exception) {
+            android.util.Log.e("DownloadStatus", "Content URI download failed", e)
+            return@withContext StatusRepository.DownloadResult(
+                success = false,
+                errorMessage = "Failed to download from content URI: ${e.message}"
+            )
+        }
+    }
+
+    private suspend fun handleFilePathDownload(status: StatusItem): StatusRepository.DownloadResult = withContext(Dispatchers.IO) {
+        try {
+            val srcFile = File(status.path)
+
+            android.util.Log.d("DownloadStatus", "File exists: ${srcFile.exists()}")
+            android.util.Log.d("DownloadStatus", "File canRead: ${srcFile.canRead()}")
+            android.util.Log.d("DownloadStatus", "File length: ${srcFile.length()}")
+
+            // Enhanced file existence and accessibility check
+            if (!srcFile.exists()) {
+                android.util.Log.d("DownloadStatus", "Source file not found, searching alternatives...")
+                // Try to find the file in alternative locations
+                val fileName = status.path.substringAfterLast('/')
+                android.util.Log.d("DownloadStatus", "Looking for filename: $fileName")
+                val alternativeFile = findFileInAlternativeLocations(fileName)
+
+                if (alternativeFile == null) {
+                    android.util.Log.e("DownloadStatus", "No alternative file found")
+                    return@withContext StatusRepository.DownloadResult(
+                        success = false,
+                        errorMessage = "Source file not found: ${status.path}"
+                    )
+                }
+
+                android.util.Log.d("DownloadStatus", "Found alternative file: ${alternativeFile.absolutePath}")
+                // Use the alternative file if found
+                return@withContext copyFileToDestination(alternativeFile, fileName)
+            }
+
+            // Check if file is readable
+            if (!srcFile.canRead()) {
+                android.util.Log.e("DownloadStatus", "File is not readable")
+                return@withContext StatusRepository.DownloadResult(
+                    success = false,
+                    errorMessage = "Source file is not readable: ${status.path}"
+                )
+            }
+
+            val fileName = srcFile.name
+            android.util.Log.d("DownloadStatus", "Proceeding with file copy for: $fileName")
+            return@withContext copyFileToDestination(srcFile, fileName)
+
+        } catch (e: Exception) {
+            android.util.Log.e("DownloadStatus", "File path download failed", e)
+            return@withContext StatusRepository.DownloadResult(
+                success = false,
+                errorMessage = "Failed to download file: ${e.message}"
+            )
+        }
+    }
+
+    private fun extractFileNameFromUri(uri: Uri): String? {
+        return try {
+            // Try to get the display name from the document URI
+            val uriString = uri.toString()
+
+            // For document URIs, extract the filename from the last segment
+            if (uriString.contains("%2F")) {
+                // URL decoded filename extraction
+                val decoded = java.net.URLDecoder.decode(uriString, "UTF-8")
+                val fileName = decoded.substringAfterLast("/")
+                if (fileName.isNotEmpty() && fileName.contains(".")) {
+                    return fileName
+                }
+            }
+
+            // Fallback: extract from URI path
+            uri.lastPathSegment?.let { segment ->
+                if (segment.contains(".")) {
+                    return segment
+                }
+            }
+
+            // Last resort: generate a filename based on timestamp and type
+            val timestamp = System.currentTimeMillis()
+            return "status_$timestamp.mp4" // Default to mp4, adjust based on content type if needed
+
+        } catch (e: Exception) {
+            android.util.Log.e("DownloadStatus", "Error extracting filename from URI", e)
+            null
+        }
+    }
+
+    private suspend fun findFileInAlternativeLocations(fileName: String): File? = withContext(Dispatchers.IO) {
+        val alternativePaths = listOf(
+            // Try both WhatsApp and WhatsApp Business paths
+            "/Android/media/com.whatsapp/WhatsApp/Media/.Statuses",
+            "/WhatsApp/Media/.Statuses",
+            "/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses",
+            "/WhatsApp Business/Media/.Statuses"
+        )
+
+        for (path in alternativePaths) {
+            val fullPath = Environment.getExternalStorageDirectory().toString() + path
+            val folder = File(fullPath)
+            if (folder.exists() && folder.isDirectory) {
+                val file = File(folder, fileName)
+                if (file.exists() && file.canRead()) {
+                    return@withContext file
+                }
+            }
+        }
+        null
+    }
+
+    private suspend fun copyFileToDestination(srcFile: File, fileName: String): StatusRepository.DownloadResult = withContext(Dispatchers.IO) {
+        try {
+            // Create download directory
             val publicDir = File(publicSavedPath)
             if (!publicDir.exists()) {
                 val publicDirCreated = publicDir.mkdirs()
                 if (!publicDirCreated) {
                     return@withContext StatusRepository.DownloadResult(
                         success = false,
-                        errorMessage = "Failed to create Pictures/Status Saver directory"
+                        errorMessage = "Failed to create download directory: $publicSavedPath"
                     )
                 }
             }
 
-            // Create app-specific directory
-            val appSpecificDir = File(appSpecificPath)
-            if (!appSpecificDir.exists()) {
-                appSpecificDir.mkdirs() // Try to create, but don't fail if it doesn't work
-            }
-
             // Generate unique filename if needed
-            val baseFileName = status.path.substringAfterLast('/')
-            val nameWithoutExt = baseFileName.substringBeforeLast('.')
-            val ext = baseFileName.substringAfterLast('.')
+            val nameWithoutExt = fileName.substringBeforeLast('.')
+            val ext = fileName.substringAfterLast('.')
             val timestamp = System.currentTimeMillis()
-            val uniqueFileName = if (File(publicDir, baseFileName).exists()) {
+            val uniqueFileName = if (File(publicDir, fileName).exists()) {
                 "${nameWithoutExt}_$timestamp.$ext"
             } else {
-                baseFileName
+                fileName
             }
 
-            // Save to public directory (primary location)
-            val publicDestFile = File(publicDir, uniqueFileName)
+            // Copy file to destination
+            val destFile = File(publicDir, uniqueFileName)
             try {
-                FileInputStream(srcFile).use { input ->
-                    FileOutputStream(publicDestFile).use { output ->
-                        input.copyTo(output)
-                    }
+                srcFile.copyTo(destFile, overwrite = false)
+
+                // Verify the copy was successful
+                if (!destFile.exists() || destFile.length() == 0L) {
+                    return@withContext StatusRepository.DownloadResult(
+                        success = false,
+                        errorMessage = "File copy verification failed"
+                    )
                 }
 
-                // Also try to save to app-specific directory as backup
+                // Create app-specific backup copy (optional)
                 try {
-                    val appSpecificFile = File(appSpecificDir, uniqueFileName)
-                    FileInputStream(srcFile).use { input ->
-                        FileOutputStream(appSpecificFile).use { output ->
-                            input.copyTo(output)
-                        }
+                    val appSpecificDir = File(appSpecificPath)
+                    if (!appSpecificDir.exists()) {
+                        appSpecificDir.mkdirs()
                     }
+                    val backupFile = File(appSpecificDir, uniqueFileName)
+                    srcFile.copyTo(backupFile, overwrite = false)
                 } catch (e: Exception) {
-                    // Non-critical error - at least we saved to the public directory
+                    // Non-critical error - main copy succeeded
                     e.printStackTrace()
                 }
 
-                // Notify media scanner to make the file appear in gallery
-                val mediaScanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
-                mediaScanIntent.data = Uri.fromFile(publicDestFile)
-                context.sendBroadcast(mediaScanIntent)
+                // Notify media scanner
+                try {
+                    val mediaScanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+                    mediaScanIntent.data = Uri.fromFile(destFile)
+                    context.sendBroadcast(mediaScanIntent)
+                } catch (e: Exception) {
+                    // Non-critical error
+                    e.printStackTrace()
+                }
 
                 return@withContext StatusRepository.DownloadResult(
                     success = true,
-                    savedPath = publicDestFile.absolutePath
+                    savedPath = destFile.absolutePath
                 )
+
             } catch (e: Exception) {
                 e.printStackTrace()
                 return@withContext StatusRepository.DownloadResult(
                     success = false,
-                    errorMessage = "Failed to save file: ${e.message}"
+                    errorMessage = "Failed to copy file: ${e.message}"
                 )
             }
         } catch (e: Exception) {
             e.printStackTrace()
             return@withContext StatusRepository.DownloadResult(
                 success = false,
-                errorMessage = "Unexpected error: ${e.message}"
+                errorMessage = "Unexpected error during copy: ${e.message}"
             )
         }
     }

@@ -3,6 +3,7 @@ package com.mg.statussaver.presentation.screens.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mg.statussaver.data.repository.StatusRepository
+import com.mg.statussaver.domain.usecase.SaveStatusUseCase
 import com.mg.statussaver.utils.PermissionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,8 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     val permissionManager: PermissionManager,
-    private val statusRepository: StatusRepository
+    private val statusRepository: StatusRepository,
+    private val saveStatusUseCase: SaveStatusUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -101,6 +103,21 @@ class HomeViewModel @Inject constructor(
 
     fun refreshPermissions() {
         checkPermissions()
+    }
+
+    /**
+     * Downloads a status item to the device storage
+     * Location: /storage/emulated/0/Download/StatusSaver
+     */
+    fun downloadStatus(statusItem: StatusItem, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val result = saveStatusUseCase(statusItem)
+                onResult(result.success, result.errorMessage)
+            } catch (e: Exception) {
+                onResult(false, "Download failed: ${e.message}")
+            }
+        }
     }
 }
 

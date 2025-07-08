@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
@@ -55,13 +54,33 @@ fun PermissionScreen(
     val context = LocalContext.current
 
     var showFolderSelection by remember { mutableStateOf(false) }
+    var showAppSelection by remember { mutableStateOf(false) }
     var permissionGranted by remember { mutableStateOf(false) }
+    var isLaunchingFolderPicker by remember { mutableStateOf(false) }
+    var selectedAppType by remember { mutableStateOf(permissionManager.getSelectedAppType()) }
+
+    val availableApps = remember { permissionManager.getAvailableApps() }
+
+    // Folder selection launcher for manual selection (declare first)
+    val folderSelectionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        isLaunchingFolderPicker = false
+        uri?.let {
+            // Save the folder URI
+            permissionManager.saveStatusFolderUri(it)
+            onPermissionGranted()
+        } ?: run {
+            // If cancelled, show manual selection screen
+            showFolderSelection = true
+        }
+    }
 
     // Custom launcher for WhatsApp folder navigation
     val whatsAppFolderLauncher = rememberLauncherForActivityResult(
-        contract = object : ActivityResultContract<Unit, Uri?>() {
-            override fun createIntent(context: Context, input: Unit): Intent {
-                return permissionManager.createWhatsAppStatusFolderIntent()
+        contract = object : ActivityResultContract<String, Uri?>() {
+            override fun createIntent(context: Context, input: String): Intent {
+                return permissionManager.createAutoNavigateStatusFolderIntent(input)
             }
 
             override fun parseResult(resultCode: Int, intent: Intent?): Uri? {
@@ -73,10 +92,18 @@ fun PermissionScreen(
             }
         }
     ) { uri ->
+        isLaunchingFolderPicker = false
         uri?.let {
-            // Save the folder URI
-            permissionManager.saveStatusFolderUri(it)
-            onPermissionGranted()
+            // Validate if the selected folder is correct
+            if (permissionManager.isCorrectStatusFolder(it, selectedAppType)) {
+                // Save the folder URI for the selected app type
+                permissionManager.saveStatusFolderUriForAppType(it, selectedAppType)
+                permissionManager.setSelectedAppType(selectedAppType)
+                onPermissionGranted()
+            } else {
+                // If wrong folder selected, show manual selection with guidance
+                showFolderSelection = true
+            }
         } ?: run {
             // If user cancelled or failed, show manual selection
             showFolderSelection = true
@@ -91,19 +118,22 @@ fun PermissionScreen(
         if (granted) {
             permissionGranted = true
             permissionManager.setPermissionGranted(true)
-            // Automatically launch folder selection with WhatsApp status folder navigation
-            whatsAppFolderLauncher.launch(Unit)
-        }
-    }
 
-    // Folder selection launcher for manual selection
-    val folderSelectionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        uri?.let {
-            // Save the folder URI
-            permissionManager.saveStatusFolderUri(it)
-            onPermissionGranted()
+            // Immediately launch folder picker after permission granted
+            if (availableApps.size > 1) {
+                showAppSelection = true
+            } else if (availableApps.size == 1) {
+                selectedAppType = availableApps.first()
+                permissionManager.setSelectedAppType(selectedAppType)
+                // Set flag to indicate we're launching folder picker
+                isLaunchingFolderPicker = true
+                // Directly launch folder picker without showing intermediate screen
+                whatsAppFolderLauncher.launch(selectedAppType)
+            } else {
+                // No WhatsApp apps found, directly launch manual folder selection
+                isLaunchingFolderPicker = true
+                folderSelectionLauncher.launch(null)
+            }
         }
     }
 
@@ -117,156 +147,252 @@ fun PermissionScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            if (!permissionGranted && !showFolderSelection) {
-                // Storage Permission Step
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+            when {
+                // Show permission screen when no permission granted and not launching picker
+                !permissionGranted && !showFolderSelection && !isLaunchingFolderPicker -> {
+                    // Storage Permission Step
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Storage,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Storage Permission Required",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "This app needs access to your device storage to save and manage WhatsApp status files.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Button(
-                            onClick = {
-                                storagePermissionLauncher.launch(PermissionManager.REQUIRED_PERMISSIONS)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            ),
-                            shape = RoundedCornerShape(8.dp)
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
+                            Icon(
+                                imageVector = Icons.Default.Storage,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Storage Permission Required",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "This app needs access to your device storage to save and manage WhatsApp status files.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            Button(
+                                onClick = {
+                                    storagePermissionLauncher.launch(PermissionManager.REQUIRED_PERMISSIONS)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                ),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Security,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Security,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Allow",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Show app selection when multiple WhatsApp apps available
+                showAppSelection -> {
+                    // App Selection Step (shown when multiple WhatsApp apps are available)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Select WhatsApp Version",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Please select the version of WhatsApp you are using to access status files.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // Buttons for each available app
+                            availableApps.forEach { appType ->
+                                Button(
+                                    onClick = {
+                                        selectedAppType = appType
+                                        permissionManager.setSelectedAppType(appType)
+                                        isLaunchingFolderPicker = true
+                                        whatsAppFolderLauncher.launch(appType)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    content = {
+                                        Text(
+                                            text = when (appType) {
+                                                PermissionManager.APP_TYPE_WHATSAPP_BUSINESS -> "WhatsApp Business"
+                                                else -> "WhatsApp"
+                                            },
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+
+                            // Back button
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            OutlinedButton(
+                                onClick = {
+                                    showAppSelection = false
+                                    permissionGranted = false
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
                                 Text(
-                                    text = "Allow",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium
+                                    text = "Back",
+                                    fontSize = 16.sp
                                 )
                             }
                         }
                     }
                 }
-            } else {
-                // Folder Selection Step (shown when permissions granted or manual selection needed)
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+
+                // Show manual folder selection only when explicitly needed
+                showFolderSelection -> {
+                    // Folder Selection Step (shown when manual selection needed)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.FolderOpen,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Select Media Folder",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Please select the WhatsApp Media folder to access status files.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Navigate to: Android/media/com.whatsapp/WhatsApp/Media/.Statuses",
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp)
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Button(
-                            onClick = {
-                                folderSelectionLauncher.launch(null)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            ),
-                            shape = RoundedCornerShape(8.dp)
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Folder,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Use this Folder",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
+                            Icon(
+                                imageVector = Icons.Default.FolderOpen,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
 
-                        if (showFolderSelection) {
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Select Media Folder",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Please navigate to the WhatsApp Media folder to access status files.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = permissionManager.getStatusFolderPathText(selectedAppType),
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp)
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            Button(
+                                onClick = {
+                                    isLaunchingFolderPicker = true
+                                    folderSelectionLauncher.launch(null)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Folder,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Select Folder",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+
                             Spacer(modifier = Modifier.height(12.dp))
 
                             OutlinedButton(
@@ -282,6 +408,48 @@ fun PermissionScreen(
                                     fontSize = 16.sp
                                 )
                             }
+                        }
+                    }
+                }
+
+                // Show loading/waiting state when launching folder picker
+                else -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FolderOpen,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Opening File Manager...",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Please select the WhatsApp status folder when the file manager opens.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }

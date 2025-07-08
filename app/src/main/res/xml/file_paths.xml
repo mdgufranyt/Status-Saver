@@ -1,26 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- External storage paths -->
+    <!-- External storage paths for WhatsApp status files -->
     <external-path name="external_files" path="." />
+
+    <!-- Internal storage paths -->
+    <files-path name="files" path="." />
 
     <!-- Cache directory -->
     <cache-path name="cache" path="." />
 
-    <!-- Internal storage -->
-    <files-path name="files" path="." />
-
-    <!-- External cache -->
+    <!-- External cache directory -->
     <external-cache-path name="external_cache" path="." />
 
-    <!-- Downloads folder -->
-    <external-path name="downloads" path="Download/" />
-
-    <!-- WhatsApp status folder -->
-    <external-path name="whatsapp_status" path="WhatsApp/Media/.Statuses/" />
-    <external-path name="whatsapp_business_status" path="WhatsApp Business/Media/.Statuses/" />
-
-    <!-- Android 11+ media paths -->
-    <external-path name="android_media_whatsapp" path="Android/media/com.whatsapp/WhatsApp/Media/.Statuses/" />
-    <external-path name="android_media_whatsapp_business" path="Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses/" />
+    <!-- Downloads directory -->
+    <external-files-path name="external_downloads" path="Download/" />
 </paths>
 

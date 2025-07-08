@@ -49,10 +49,10 @@
             </intent-filter>
         </activity>
 
-        <!-- File provider for sharing files -->
+        <!-- FileProvider for sharing files securely -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

@@ -1,5 +1,10 @@
 package com.mg.statussaver.presentation.screens.home
 
+import android.content.Intent
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
+import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Whatsapp
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Download
@@ -33,6 +39,8 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Card
@@ -48,40 +56,115 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.mg.statussaver.presentation.screens.permission.PermissionScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+
 
 val TealGreen = Color(0xFF00A884)
 
+/**
+ * Shares a status file (image or video) using Android's share intent
+ */
+fun shareStatusFile(context: android.content.Context, filePath: String, mediaType: MediaType) {
+    try {
+        val uri = if (filePath.startsWith("content://")) {
+            // If it's already a content URI, use it directly
+            Uri.parse(filePath)
+        } else {
+            // If it's a file path, convert to FileProvider URI
+            val file = File(filePath)
+            if (!file.exists()) {
+                android.util.Log.e("ShareStatus", "File does not exist: $filePath")
+                return
+            }
+
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+        }
+
+        val mimeType = when (mediaType) {
+            MediaType.IMAGE -> "image/*"
+            MediaType.VIDEO -> "video/*"
+        }
+
+        val shareIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            type = mimeType
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_TEXT, "Shared from Status Saver")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        val chooserIntent = Intent.createChooser(shareIntent, "Share Status")
+        chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        android.util.Log.d("ShareStatus", "Sharing file: $filePath with URI: $uri")
+        context.startActivity(chooserIntent)
+
+    } catch (e: Exception) {
+        android.util.Log.e("ShareStatus", "Error sharing file: $filePath", e)
+        // You could show a toast here to inform the user
+        android.widget.Toast.makeText(context, "Unable to share file", android.widget.Toast.LENGTH_SHORT).show()
+    }
+}
+
 @Composable
-fun StatusItemCard(item: StatusItem, onClick: (StatusItem) -> Unit) {
+fun StatusItemCard(
+    item: StatusItem,
+    onClick: (StatusItem) -> Unit,
+    onDownloadClick: (StatusItem) -> Unit = {}
+) {
+    val context = LocalContext.current
+
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .clickable { onClick(item) }
     ) {
-        // Load actual image using Coil
-        AsyncImage(
-            model = item.path,
-            contentDescription = "Status",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
+        if (item.type == MediaType.VIDEO) {
+            // For videos, create a custom thumbnail
+            VideoThumbnail(
+                videoPath = item.path,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            // For images, use AsyncImage directly
+            AsyncImage(
+                model = item.path,
+                contentDescription = "Image Status",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
         // Video play indicator
         if (item.type == MediaType.VIDEO) {
@@ -101,19 +184,46 @@ fun StatusItemCard(item: StatusItem, onClick: (StatusItem) -> Unit) {
             }
         }
 
-        // Timestamp
+        // Share button (bottom-left, replacing timestamp)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(8.dp)
-                .background(Color(0x88000000), RoundedCornerShape(4.dp))
-                .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
-            Text(
-                text = item.timestamp,
-                color = Color.White,
-                fontSize = 12.sp
-            )
+            IconButton(
+                onClick = { shareStatusFile(context, item.path, item.type) },
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(Color(0x88000000), CircleShape)
+            ) {
+                Icon(
+                    Icons.Outlined.Share,
+                    contentDescription = "Share",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        // Download button (bottom-right)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(8.dp)
+        ) {
+            IconButton(
+                onClick = { onDownloadClick(item) },
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(Color(0x88000000), CircleShape)
+            ) {
+                Icon(
+                    Icons.Outlined.Download,
+                    contentDescription = "Download",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }
@@ -180,6 +290,7 @@ fun HomeScreen(
     val permissionState by viewModel.permissionState.collectAsState()
     val statusCount by viewModel.statusCount.collectAsState()
     val tabs = listOf("Recent", "Images", "Videos")
+    val context = LocalContext.current // Move context to proper Composable scope
 
     // Dynamic categories with real counts
     val categories = remember(statusCount) {
@@ -356,7 +467,22 @@ fun HomeScreen(
                         StatusContent(
                             uiState = uiState,
                             onStatusClick = onStatusClick,
-                            onRefresh = { viewModel.refreshStatuses() }
+                            onRefresh = { viewModel.refreshStatuses() },
+                            onDownloadClick = { statusItem ->
+                                viewModel.downloadStatus(statusItem) { success, errorMessage ->
+                                    // Show user feedback
+                                    val message = if (success) {
+                                        "Status downloaded"  //  to /storage/emulated/0/Download/StatusSaver
+                                    } else {
+                                        errorMessage ?: "Download failed"
+                                    }
+                                    android.widget.Toast.makeText(
+                                        context, // Use context from proper scope
+                                        message,
+                                        if (success) android.widget.Toast.LENGTH_SHORT else android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
                         )
                     }
                 }
@@ -456,7 +582,8 @@ fun ModernCategoryCard(
 fun StatusContent(
     uiState: HomeUiState,
     onStatusClick: (StatusItem) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onDownloadClick: (StatusItem) -> Unit = {}
 ) {
     when (uiState) {
         is HomeUiState.Loading -> {
@@ -484,7 +611,8 @@ fun StatusContent(
                 items(uiState.statusItems) { statusItem ->
                     StatusItemCard(
                         item = statusItem,
-                        onClick = onStatusClick
+                        onClick = onStatusClick,
+                        onDownloadClick = onDownloadClick
                     )
                 }
             }
@@ -516,6 +644,177 @@ fun StatusContent(
         }
     }
 }
+
+@Composable
+fun VideoThumbnail(
+    videoPath: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var thumbnail by remember(videoPath) { mutableStateOf<Bitmap?>(null) }
+    var isLoading by remember(videoPath) { mutableStateOf(true) }
+    var hasError by remember(videoPath) { mutableStateOf(false) }
+
+    // Simple memory cache to avoid repeated processing
+    val thumbnailCache = remember { mutableMapOf<String, Bitmap?>() }
+
+    LaunchedEffect(videoPath) {
+        // Check cache first
+        thumbnailCache[videoPath]?.let { cachedBitmap ->
+            thumbnail = cachedBitmap
+            isLoading = false
+            hasError = false
+            return@LaunchedEffect
+        }
+
+        isLoading = true
+        hasError = false
+
+        try {
+            val bitmap = withContext(Dispatchers.IO) {
+                var retriever: MediaMetadataRetriever? = null
+                try {
+                    retriever = MediaMetadataRetriever()
+
+                    if (videoPath.startsWith("content://")) {
+                        val uri = Uri.parse(videoPath)
+                        retriever.setDataSource(context, uri)
+                    } else {
+                        // Handle file paths
+                        val file = File(videoPath)
+                        if (file.exists() && file.canRead()) {
+                            retriever.setDataSource(videoPath)
+                        } else {
+                            return@withContext null
+                        }
+                    }
+
+                    // Get frame at 1 second (or first frame if video is shorter)
+                    val timeUs = 1000000L // 1 second in microseconds
+                    var frame = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+
+                    // If no frame at 1 second, try first frame
+                    if (frame == null) {
+                        frame = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                    }
+
+                    // Resize bitmap to prevent memory issues
+                    frame?.let { originalBitmap ->
+                        val maxSize = 200
+                        if (originalBitmap.width > maxSize || originalBitmap.height > maxSize) {
+                            val ratio = minOf(
+                                maxSize.toFloat() / originalBitmap.width,
+                                maxSize.toFloat() / originalBitmap.height
+                            )
+                            val newWidth = (originalBitmap.width * ratio).toInt()
+                            val newHeight = (originalBitmap.height * ratio).toInt()
+
+                            val resized = Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true)
+                            if (resized != originalBitmap) {
+                                originalBitmap.recycle()
+                            }
+                            resized
+                        } else {
+                            originalBitmap
+                        }
+                    }
+                } catch (e: Exception) {
+                    null
+                } finally {
+                    try {
+                        retriever?.release()
+                    } catch (e: Exception) {
+                        // Ignore cleanup errors
+                    }
+                }
+            }
+
+            // Cache the result (including null for failed attempts)
+            thumbnailCache[videoPath] = bitmap
+            thumbnail = bitmap
+            hasError = bitmap == null
+
+        } catch (e: Exception) {
+            hasError = true
+            thumbnail = null
+        } finally {
+            isLoading = false
+        }
+    }
+
+    // Clean up cache when composable is removed
+    DisposableEffect(videoPath) {
+        onDispose {
+            // Clean up old cache entries to prevent memory leaks
+            if (thumbnailCache.size > 50) {
+                val keysToRemove = thumbnailCache.keys.take(thumbnailCache.size - 40)
+                keysToRemove.forEach { key ->
+                    thumbnailCache[key]?.recycle()
+                    thumbnailCache.remove(key)
+                }
+            }
+        }
+    }
+
+    Box(modifier = modifier) {
+        when {
+            isLoading -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
+            }
+            thumbnail != null -> {
+                Image(
+                    bitmap = thumbnail!!.asImageBitmap(),
+                    contentDescription = "Video Thumbnail",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Play icon overlay
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        Icons.Filled.PlayCircleOutline,
+                        contentDescription = "Play Video",
+                        tint = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier
+                            .size(32.dp)
+                            .shadow(4.dp, CircleShape)
+                    )
+                }
+            }
+            else -> {
+                // Error state - show default video icon
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Icon(
+                        Icons.Outlined.Videocam,
+                        contentDescription = "Video",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 data class CategoryItemData(
     val title: String,
