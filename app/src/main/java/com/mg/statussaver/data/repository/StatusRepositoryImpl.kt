@@ -7,14 +7,12 @@ import android.net.Uri
 import android.os.Environment
 import androidx.core.content.FileProvider
 import com.mg.statussaver.domain.repository.StatusRepository
-import com.mg.statussaver.presentation.screens.home.StatusItem
 import com.mg.statussaver.presentation.screens.home.MediaType
+import com.mg.statussaver.presentation.screens.home.StatusItem
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -80,9 +78,9 @@ class StatusRepositoryImpl @Inject constructor(
 
         val files = folder.listFiles { file ->
             file.isFile && (file.name.endsWith(".jpg", ignoreCase = true) ||
-                           file.name.endsWith(".jpeg", ignoreCase = true) ||
-                           file.name.endsWith(".png", ignoreCase = true) ||
-                           file.name.endsWith(".mp4", ignoreCase = true))
+                    file.name.endsWith(".jpeg", ignoreCase = true) ||
+                    file.name.endsWith(".png", ignoreCase = true) ||
+                    file.name.endsWith(".mp4", ignoreCase = true))
         } ?: return emptyList()
 
         return files.sortedByDescending { it.lastModified() }.map { file ->

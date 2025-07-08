@@ -31,6 +31,27 @@ class HomeViewModel @Inject constructor(
     private val _statusCount = MutableStateFlow(com.mg.statussaver.data.repository.StatusCount(0, 0, 0))
     val statusCount = _statusCount.asStateFlow()
 
+
+
+    // for StatusViewerScreen---------------------------------------------------------
+
+    private val _viewerItems = MutableStateFlow<List<StatusItem>>(emptyList())
+    val viewerItems: StateFlow<List<StatusItem>> = _viewerItems.asStateFlow()
+
+    private val _initialViewerIndex = MutableStateFlow(0)
+    val initialViewerIndex: StateFlow<Int> = _initialViewerIndex.asStateFlow()
+
+    fun openViewer(tabIndex: Int, selectedItem: StatusItem, allItems: List<StatusItem>) {
+        _selectedTabIndex.value = tabIndex
+        _viewerItems.value = allItems
+        _initialViewerIndex.value = allItems.indexOfFirst { it.path == selectedItem.path }
+
+    }
+
+    // ------------------------------------------------------------------------------------
+
+
+
     init {
         checkPermissions()
     }
