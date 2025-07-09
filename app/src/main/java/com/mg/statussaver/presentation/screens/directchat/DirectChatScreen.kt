@@ -4,15 +4,40 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
@@ -26,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.navigation.NavController
 
 // Data class for country information
@@ -43,8 +69,8 @@ fun DirectChatScreen(
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-    
-    // Optimized country data - prioritizing Asian countries and major regions
+
+    // country data - prioritizing Asian countries and major regions
     val countries = remember {
         listOf(
             // Top Priority - Major Asian Countries (Your main audience)
@@ -56,7 +82,7 @@ fun DirectChatScreen(
             Country("Sri Lanka", "LK", "+94", "🇱🇰"),
             Country("Afghanistan", "AF", "+93", "🇦🇫"),
             Country("Myanmar", "MM", "+95", "🇲🇲"),
-            
+
             // Other Popular Asian Countries
             Country("China", "CN", "+86", "🇨🇳"),
             Country("Japan", "JP", "+81", "🇯🇵"),
@@ -68,7 +94,7 @@ fun DirectChatScreen(
             Country("Philippines", "PH", "+63", "🇵🇭"),
             Country("Vietnam", "VN", "+84", "🇻🇳"),
             Country("Cambodia", "KH", "+855", "🇰🇭"),
-            
+
             // Major Western Countries
             Country("United States", "US", "+1", "🇺🇸"),
             Country("Canada", "CA", "+1", "🇨🇦"),
@@ -79,7 +105,7 @@ fun DirectChatScreen(
             Country("Italy", "IT", "+39", "🇮🇹"),
             Country("Spain", "ES", "+34", "🇪🇸"),
             Country("Netherlands", "NL", "+31", "🇳🇱"),
-            
+
             // Middle East & Gulf Countries
             Country("UAE", "AE", "+971", "🇦🇪"),
             Country("Saudi Arabia", "SA", "+966", "🇸🇦"),
@@ -89,7 +115,7 @@ fun DirectChatScreen(
             Country("Oman", "OM", "+968", "🇴🇲"),
             Country("Turkey", "TR", "+90", "🇹🇷"),
             Country("Iran", "IR", "+98", "🇮🇷"),
-            
+
             // Other Important Countries
             Country("Russia", "RU", "+7", "🇷🇺"),
             Country("Brazil", "BR", "+55", "🇧🇷"),
@@ -101,14 +127,14 @@ fun DirectChatScreen(
             Country("Ethiopia", "ET", "+251", "🇪🇹")
         )
     }
-    
+
     // State variables
     var selectedCountry by remember { mutableStateOf(countries[0]) } // Default to India
     var isDropdownExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
-    
+
     // Filter countries based on search query
     val filteredCountries = remember(searchQuery) {
         if (searchQuery.isBlank()) {
@@ -116,17 +142,17 @@ fun DirectChatScreen(
         } else {
             countries.filter { country ->
                 country.name.contains(searchQuery, ignoreCase = true) ||
-                country.dialingCode.contains(searchQuery, ignoreCase = true) ||
-                country.code.contains(searchQuery, ignoreCase = true)
+                        country.dialingCode.contains(searchQuery, ignoreCase = true) ||
+                        country.code.contains(searchQuery, ignoreCase = true)
             }
         }
     }
-    
+
     // Validation logic
     val isPhoneNumberValid = phoneNumber.isNotBlank() && phoneNumber.length >= 7
     val isMessageValid = message.isNotBlank()
     val isSendButtonEnabled = isPhoneNumberValid && isMessageValid
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -147,7 +173,7 @@ fun DirectChatScreen(
                     onClick = { navController?.navigateUp() }
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = Color.Black
                     )
@@ -157,7 +183,7 @@ fun DirectChatScreen(
                 containerColor = Color.White
             )
         )
-        
+
         // Content
         Column(
             modifier = Modifier
@@ -173,9 +199,9 @@ fun DirectChatScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // Country Selector
             Text(
                 text = "Select Country",
@@ -183,7 +209,7 @@ fun DirectChatScreen(
                 fontWeight = FontWeight.Medium,
                 color = Color.Black
             )
-            
+
             Box {
                 Card(
                     modifier = Modifier
@@ -225,11 +251,11 @@ fun DirectChatScreen(
                         )
                     }
                 }
-                
+
                 // Dropdown Menu with Search
                 DropdownMenu(
                     expanded = isDropdownExpanded,
-                    onDismissRequest = { 
+                    onDismissRequest = {
                         isDropdownExpanded = false
                         searchQuery = ""
                     },
@@ -260,7 +286,7 @@ fun DirectChatScreen(
                             onClick = { /* Do nothing - let user type */ }
                         )
                     }
-                    
+
                     // Show filtered countries
                     filteredCountries.forEach { country ->
                         DropdownMenuItem(
@@ -291,7 +317,7 @@ fun DirectChatScreen(
                             }
                         )
                     }
-                    
+
                     // Show "No results found" if search returns empty
                     if (filteredCountries.isEmpty() && searchQuery.isNotBlank()) {
                         DropdownMenuItem(
@@ -309,7 +335,7 @@ fun DirectChatScreen(
                     }
                 }
             }
-            
+
             // Phone Number Input
             Text(
                 text = "Phone Number",
@@ -317,7 +343,7 @@ fun DirectChatScreen(
                 fontWeight = FontWeight.Medium,
                 color = Color.Black
             )
-            
+
             OutlinedTextField(
                 value = phoneNumber,
                 onValueChange = { phoneNumber = it.filter { char -> char.isDigit() } },
@@ -344,12 +370,13 @@ fun DirectChatScreen(
                 ),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                textStyle = androidx.compose.ui.text.TextStyle(color = Color.Black),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color(0xFF009688),
                     unfocusedBorderColor = Color.Gray
                 )
             )
-            
+
             // Message Input
             Text(
                 text = "Message",
@@ -357,7 +384,7 @@ fun DirectChatScreen(
                 fontWeight = FontWeight.Medium,
                 color = Color.Black
             )
-            
+
             OutlinedTextField(
                 value = message,
                 onValueChange = { message = it },
@@ -376,25 +403,29 @@ fun DirectChatScreen(
                 minLines = 4,
                 maxLines = 6,
                 modifier = Modifier.fillMaxWidth(),
+                textStyle = androidx.compose.ui.text.TextStyle(color = Color.Black),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color(0xFF009688),
                     unfocusedBorderColor = Color.Gray
                 )
             )
-            
+
             Spacer(modifier = Modifier.weight(1f))
-            
+
             // Send Button
             Button(
                 onClick = {
+
                     if (isSendButtonEnabled) {
                         val fullNumber = "${selectedCountry.dialingCode}$phoneNumber"
-                        
+
                         // Open WhatsApp with the message
                         val intent = Intent(Intent.ACTION_VIEW)
-                        intent.data = Uri.parse("https://wa.me/$fullNumber?text=${Uri.encode(message)}")
+                        intent.data =
+                            "https://wa.me/$fullNumber?text=${Uri.encode(message)}".toUri()
                         context.startActivity(intent)
                     }
+
                 },
                 enabled = isSendButtonEnabled,
                 modifier = Modifier
@@ -413,7 +444,7 @@ fun DirectChatScreen(
                     fontWeight = FontWeight.Medium
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
