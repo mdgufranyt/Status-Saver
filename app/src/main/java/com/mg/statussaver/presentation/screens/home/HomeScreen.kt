@@ -266,7 +266,7 @@ fun EmptyState() {
 
         Text(
             text = "No Status Available",
-            fontSize = 20.sp,
+            fontSize = 21.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Gray
         )
