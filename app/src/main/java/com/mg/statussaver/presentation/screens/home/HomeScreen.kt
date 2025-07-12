@@ -154,7 +154,7 @@ fun StatusItemCard(
 
     Box(
         modifier = Modifier
-            .aspectRatio(1f)
+            .aspectRatio(0.75f)
             .clip(RoundedCornerShape(8.dp))
             .clickable { onClick(item) }
     ) {
@@ -309,7 +309,13 @@ fun HomeScreen(
                 statusCount.total,
                 Color(0xFF00B09C)
             ),
-            CategoryItemData("Images", Icons.Outlined.Image, statusCount.images, Color(0xFF4CAF50)),
+
+            CategoryItemData(
+                "Images",
+                Icons.Outlined.Image,
+                statusCount.images,
+                Color(0xFF4CAF50)),
+
             CategoryItemData(
                 "Videos",
                 Icons.Outlined.PlayCircle,
@@ -363,6 +369,8 @@ fun HomeScreen(
                     }
                 )
             },
+
+            //<!-- For - AdMob Banner Ad -->
             bottomBar = {
                 BannerAdView(
                     modifier = Modifier
@@ -370,6 +378,7 @@ fun HomeScreen(
                         .padding(8.dp)
                 )
             },
+
             content = { padding: PaddingValues ->
                 LazyColumn(
                     modifier = Modifier
@@ -395,7 +404,7 @@ fun HomeScreen(
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                             IconButton(onClick = { viewModel.refreshStatuses() }) {
-                                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh", tint = Color.White)
+                                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh", tint = TealGreen)
                             }
                         }
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -522,7 +531,8 @@ fun ModernCategoryCard(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Icon(
                 imageVector = category.icon,
@@ -575,7 +585,7 @@ fun StatusContent(
                 columns = GridCells.Fixed(2),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.height(400.dp)
+                modifier = Modifier.height(620.dp)
             ) {
                 items(uiState.statusItems) { statusItem ->
                     StatusItemCard(
