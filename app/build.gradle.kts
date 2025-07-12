@@ -84,4 +84,7 @@ dependencies {
     implementation("com.google.accompanist:accompanist-pager:0.34.0")
     implementation("androidx.media3:media3-exoplayer:1.3.0")
     implementation("androidx.media3:media3-ui:1.3.0")
+
+     // Google Admob
+    implementation("com.google.android.gms:play-services-ads:24.4.0")
 }

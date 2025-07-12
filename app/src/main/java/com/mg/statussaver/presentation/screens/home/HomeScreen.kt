@@ -1,9 +1,9 @@
 package com.mg.statussaver.presentation.screens.home
 
+
 import android.content.Intent
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -51,6 +51,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -77,9 +78,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.core.graphics.scale
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.mg.statussaver.presentation.screens.permission.PermissionScreen
+import com.mg.statussaver.utils.BannerAdView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -94,7 +98,7 @@ fun shareStatusFile(context: android.content.Context, filePath: String, mediaTyp
     try {
         val uri = if (filePath.startsWith("content://")) {
             // If it's already a content URI, use it directly
-            Uri.parse(filePath)
+            filePath.toUri()
         } else {
             // If it's a file path, convert to FileProvider URI
             val file = File(filePath)
@@ -132,7 +136,11 @@ fun shareStatusFile(context: android.content.Context, filePath: String, mediaTyp
     } catch (e: Exception) {
         android.util.Log.e("ShareStatus", "Error sharing file: $filePath", e)
         // You could show a toast here to inform the user
-        android.widget.Toast.makeText(context, "Unable to share file", android.widget.Toast.LENGTH_SHORT).show()
+        android.widget.Toast.makeText(
+            context,
+            "Unable to share file",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
     }
 }
 
@@ -308,7 +316,7 @@ fun HomeScreen(
                 statusCount.videos,
                 Color(0xFF2196F3)
             ),
-            CategoryItemData("Downloads", Icons.Outlined.Download, 0, Color(0xFFFF9800))
+//            CategoryItemData("Downloads", Icons.Outlined.Download, 0, Color(0xFFFF9800))
         )
     }
 
@@ -327,14 +335,8 @@ fun HomeScreen(
             )
         }
 
-        is PermissionState.Granted -> {
-            // Show main content when permissions are granted
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-            ) {
-                // Modern Top App Bar
+        is PermissionState.Granted -> Scaffold(
+            topBar = {
                 TopAppBar(
                     title = {
                         Text(
@@ -350,41 +352,35 @@ fun HomeScreen(
                     ),
                     actions = {
                         IconButton(onClick = onNavigateToLanguage) {
-                            Icon(
-                                Icons.Rounded.Language,
-                                contentDescription = "Language",
-                                tint = Color.White
-                            )
+                            Icon(Icons.Rounded.Language, contentDescription = "Language", tint = Color.White)
                         }
                         IconButton(onClick = onNavigateToSettings) {
-                            Icon(
-                                Icons.Rounded.Settings,
-                                contentDescription = "Settings",
-                                tint = Color.White
-                            )
+                            Icon(Icons.Rounded.Settings, contentDescription = "Settings", tint = Color.White)
                         }
                         IconButton(onClick = onNavigateToDownloads) {
-                            Icon(
-                                Icons.Outlined.Download,
-                                contentDescription = "Downloads",
-                                tint = Color.White
-                            )
+                            Icon(Icons.Outlined.Download, contentDescription = "Downloads", tint = Color.White)
                         }
                     }
                 )
-
-                // Main Content with LazyColumn
+            },
+            bottomBar = {
+                BannerAdView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                )
+            },
+            content = { padding: PaddingValues ->
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(16.dp)
                 ) {
-                    // Direct Chat Card
                     item {
                         DirectChatCard(onDirectChatClick)
                     }
-
-                    // Categories Section
                     item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -398,40 +394,18 @@ fun HomeScreen(
                                 ),
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
-
-                            // Refresh button
-                            IconButton(
-                                onClick = { viewModel.refreshStatuses() }
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Refresh,
-                                    contentDescription = "Refresh",
-                                    tint = Color.White
-                                )
+                            IconButton(onClick = { viewModel.refreshStatuses() }) {
+                                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh", tint = Color.White)
                             }
                         }
-
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             items(categories) { category ->
                                 ModernCategoryCard(
                                     category = category,
-                                    isSelected = when (category.title) {
-                                        "All Status" -> selectedTabIndex == 0
-                                        "Images" -> selectedTabIndex == 1
-                                        "Videos" -> selectedTabIndex == 2
-                                        else -> false
-                                    },
                                     onClick = {
                                         when (category.title) {
                                             "Images" -> viewModel.setSelectedTab(1)
                                             "Videos" -> viewModel.setSelectedTab(2)
-                                            "Downloads" -> {
-                                                // Navigate to SavedStatusScreen
-                                                onNavigateToDownloads()
-                                            }
-
                                             else -> viewModel.setSelectedTab(0)
                                         }
                                     }
@@ -439,8 +413,6 @@ fun HomeScreen(
                             }
                         }
                     }
-
-                    // Swipeable Tabs Section
                     item {
                         PrimaryTabRow(
                             selectedTabIndex = selectedTabIndex,
@@ -461,8 +433,6 @@ fun HomeScreen(
                             }
                         }
                     }
-
-                    // Status Content
                     item {
                         StatusContent(
                             uiState = uiState,
@@ -470,14 +440,13 @@ fun HomeScreen(
                             onRefresh = { viewModel.refreshStatuses() },
                             onDownloadClick = { statusItem ->
                                 viewModel.downloadStatus(statusItem) { success, errorMessage ->
-                                    // Show user feedback
                                     val message = if (success) {
-                                        "Status downloaded"  //  to /storage/emulated/0/Download/StatusSaver
+                                        "Status downloaded"
                                     } else {
                                         errorMessage ?: "Download failed"
                                     }
                                     android.widget.Toast.makeText(
-                                        context, // Use context from proper scope
+                                        context,
                                         message,
                                         if (success) android.widget.Toast.LENGTH_SHORT else android.widget.Toast.LENGTH_LONG
                                     ).show()
@@ -487,7 +456,8 @@ fun HomeScreen(
                     }
                 }
             }
-        }
+        )
+
     }
 }
 
@@ -539,8 +509,7 @@ fun DirectChatCard(onDirectChatClick: () -> Unit) {
 @Composable
 fun ModernCategoryCard(
     category: CategoryItemData,
-    onClick: () -> Unit,
-    isSelected: Boolean = false
+    onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -677,7 +646,7 @@ fun VideoThumbnail(
                     retriever = MediaMetadataRetriever()
 
                     if (videoPath.startsWith("content://")) {
-                        val uri = Uri.parse(videoPath)
+                        val uri = videoPath.toUri()
                         retriever.setDataSource(context, uri)
                     } else {
                         // Handle file paths
@@ -691,11 +660,13 @@ fun VideoThumbnail(
 
                     // Get frame at 1 second (or first frame if video is shorter)
                     val timeUs = 1000000L // 1 second in microseconds
-                    var frame = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                    var frame =
+                        retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
 
                     // If no frame at 1 second, try first frame
                     if (frame == null) {
-                        frame = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                        frame =
+                            retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                     }
 
                     // Resize bitmap to prevent memory issues
@@ -709,7 +680,7 @@ fun VideoThumbnail(
                             val newWidth = (originalBitmap.width * ratio).toInt()
                             val newHeight = (originalBitmap.height * ratio).toInt()
 
-                            val resized = Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true)
+                            val resized = originalBitmap.scale(newWidth, newHeight)
                             if (resized != originalBitmap) {
                                 originalBitmap.recycle()
                             }
@@ -772,6 +743,7 @@ fun VideoThumbnail(
                     )
                 }
             }
+
             thumbnail != null -> {
                 Image(
                     bitmap = thumbnail!!.asImageBitmap(),
@@ -795,6 +767,7 @@ fun VideoThumbnail(
                     )
                 }
             }
+
             else -> {
                 // Error state - show default video icon
                 Box(
