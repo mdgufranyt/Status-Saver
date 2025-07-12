@@ -1,5 +1,7 @@
 package com.mg.statussaver.presentation.navigation
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.getValue
 import com.mg.statussaver.presentation.screens.status.StatusViewerScreen
@@ -33,6 +35,7 @@ object Routes {
     const val VIEWER = "viewer"
 }
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun StatusSaverNavGraph(navController: NavHostController) {
     NavHost(navController, startDestination = Routes.SPLASH) {

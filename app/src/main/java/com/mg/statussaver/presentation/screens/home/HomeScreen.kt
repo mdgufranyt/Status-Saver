@@ -1,6 +1,7 @@
 package com.mg.statussaver.presentation.screens.home
 
 
+import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
@@ -84,6 +85,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.mg.statussaver.presentation.screens.permission.PermissionScreen
 import com.mg.statussaver.utils.BannerAdView
+import com.mg.statussaver.utils.RewardedAdManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -298,7 +300,73 @@ fun HomeScreen(
     val permissionState by viewModel.permissionState.collectAsState()
     val statusCount by viewModel.statusCount.collectAsState()
     val tabs = listOf("Recent", "Images", "Videos")
-    val context = LocalContext.current // Move context to proper Composable scope
+
+    val context = LocalContext.current
+    val activity = context as? Activity
+    // State to track if ad should be shown
+    var shouldShowRewardedAd by remember { mutableStateOf(false) }
+
+
+
+//    var pendingStatusClick by remember { mutableStateOf<StatusItem?>(null) }
+
+
+
+
+    // Load rewarded ad when permission is granted or after splash
+    LaunchedEffect(permissionState) {
+        if (permissionState is PermissionState.Granted) {
+            RewardedAdManager.loadRewardedAd(
+                context,
+                "ca-app-pub-3940256099942544/5224354917",
+                onLoaded = { shouldShowRewardedAd = true }
+            )
+        }
+    }
+
+
+
+//
+//    // Show rewarded ad when a status is clicked
+//    LaunchedEffect(pendingStatusClick) {
+//        if (pendingStatusClick != null && activity != null) {
+//            RewardedAdManager.showRewardedAd(
+//                activity,
+//                onReward = { /* handle reward if needed */ },
+//                onClosed = {
+//                    pendingStatusClick?.let { onStatusClick(it) }
+//                    pendingStatusClick = null
+//                    // Optionally reload ad for next click
+//                    RewardedAdManager.loadRewardedAd(context, "ca-app-pub-3940256099942544/5224354917")
+//                }
+//            )
+//        }
+//    }
+//
+//    // Pass this handler to StatusItemCard
+//    val handleStatusClick: (StatusItem) -> Unit = { item ->
+//        pendingStatusClick = item
+//    }
+
+
+
+
+
+    // Show rewarded ad when loaded
+    LaunchedEffect(shouldShowRewardedAd) {
+        if (shouldShowRewardedAd && activity != null) {
+            RewardedAdManager.showRewardedAd(
+                activity,
+                onReward = { rewardItem ->
+                    // Handle reward
+                },
+                onClosed = {
+                    shouldShowRewardedAd = false
+                }
+            )
+        }
+    }
+
 
     // Dynamic categories with real counts
     val categories = remember(statusCount) {
@@ -322,7 +390,9 @@ fun HomeScreen(
                 statusCount.videos,
                 Color(0xFF2196F3)
             ),
+
 //            CategoryItemData("Downloads", Icons.Outlined.Download, 0, Color(0xFFFF9800))
+
         )
     }
 
