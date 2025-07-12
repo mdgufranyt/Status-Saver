@@ -64,6 +64,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -304,18 +305,14 @@ fun HomeScreen(
     val context = LocalContext.current
     val activity = context as? Activity
     // State to track if ad should be shown
+    var isRewardedAdShown by rememberSaveable{ mutableStateOf(false) }
     var shouldShowRewardedAd by remember { mutableStateOf(false) }
-
-
-
-//    var pendingStatusClick by remember { mutableStateOf<StatusItem?>(null) }
-
-
+    var pendingStatusClick by remember { mutableStateOf<StatusItem?>(null) }
 
 
     // Load rewarded ad when permission is granted or after splash
     LaunchedEffect(permissionState) {
-        if (permissionState is PermissionState.Granted) {
+        if (permissionState is PermissionState.Granted && !isRewardedAdShown) {
             RewardedAdManager.loadRewardedAd(
                 context,
                 "ca-app-pub-3940256099942544/5224354917",
@@ -325,28 +322,52 @@ fun HomeScreen(
     }
 
 
+    // Implement status click and rewarded ad logic --------------->
 
-//
-//    // Show rewarded ad when a status is clicked
-//    LaunchedEffect(pendingStatusClick) {
-//        if (pendingStatusClick != null && activity != null) {
-//            RewardedAdManager.showRewardedAd(
-//                activity,
-//                onReward = { /* handle reward if needed */ },
-//                onClosed = {
-//                    pendingStatusClick?.let { onStatusClick(it) }
-//                    pendingStatusClick = null
-//                    // Optionally reload ad for next click
-//                    RewardedAdManager.loadRewardedAd(context, "ca-app-pub-3940256099942544/5224354917")
-//                }
-//            )
-//        }
-//    }
-//
-//    // Pass this handler to StatusItemCard
-//    val handleStatusClick: (StatusItem) -> Unit = { item ->
-//        pendingStatusClick = item
-//    }
+    // Handler for status click
+    val handleStatusClick: (StatusItem) -> Unit = { item ->
+        pendingStatusClick = item
+        // Load ad for every click
+        RewardedAdManager.loadRewardedAd(
+            context,
+            "ca-app-pub-3940256099942544/5224354917",
+            onLoaded = {
+                // Ad loaded, will show via LaunchedEffect
+            },
+            onFailed = {
+                // Ad failed to load, open status immediately
+                pendingStatusClick = null
+                onStatusClick(item)
+
+
+            }
+        )
+    }
+
+    // Fallback: If ad callback is not triggered, open status after delay
+    LaunchedEffect(pendingStatusClick) {
+        val item = pendingStatusClick
+        if (item != null) {
+            kotlinx.coroutines.delay(500)
+            if (pendingStatusClick == item && activity != null) {
+                onStatusClick(item)
+                pendingStatusClick = null
+            }
+        }
+    }
+
+    // Show ad and open status after ad is closed
+    LaunchedEffect(pendingStatusClick) {
+        if (pendingStatusClick != null && activity != null) {
+            RewardedAdManager.showRewardedAd(
+                activity,
+                onClosed = {
+                    pendingStatusClick?.let { onStatusClick(it) }
+                    pendingStatusClick = null
+                }
+            )
+        }
+    }
 
 
 
@@ -354,7 +375,7 @@ fun HomeScreen(
 
     // Show rewarded ad when loaded
     LaunchedEffect(shouldShowRewardedAd) {
-        if (shouldShowRewardedAd && activity != null) {
+        if (shouldShowRewardedAd && activity != null && !isRewardedAdShown) {
             RewardedAdManager.showRewardedAd(
                 activity,
                 onReward = { rewardItem ->
@@ -362,6 +383,7 @@ fun HomeScreen(
                 },
                 onClosed = {
                     shouldShowRewardedAd = false
+                    isRewardedAdShown = true
                 }
             )
         }
@@ -515,7 +537,7 @@ fun HomeScreen(
                     item {
                         StatusContent(
                             uiState = uiState,
-                            onStatusClick = onStatusClick,
+                            onStatusClick = handleStatusClick,
                             onRefresh = { viewModel.refreshStatuses() },
                             onDownloadClick = { statusItem ->
                                 viewModel.downloadStatus(statusItem) { success, errorMessage ->
