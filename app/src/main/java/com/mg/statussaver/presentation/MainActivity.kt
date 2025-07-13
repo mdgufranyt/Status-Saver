@@ -1,10 +1,12 @@
 package com.mg.statussaver.presentation
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,7 +25,6 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var permissionManager: PermissionManager
 
-    // Modern Activity Result API for storage permissions
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { /* Permissions handled in the composable that launches this. */ }
@@ -36,21 +37,19 @@ class MainActivity : ComponentActivity() {
             // Take persistable permission
             val takeFlags = intent.flags and (
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            )
+                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
             contentResolver.takePersistableUriPermission(uri, takeFlags)
-
-            // Save the URI
             permissionManager.saveStatusFolderUri(uri)
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-
-            // Initialize the Google Mobile Ads SDK on a background thread.
-            MobileAds.initialize(this@MainActivity) {}
+        // Initialize the Google Mobile Ads SDK on a background thread.
+//        MobileAds.initialize(this@MainActivity) {}
 
 
         setContent {
