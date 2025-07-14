@@ -1,6 +1,10 @@
 package com.mg.statussaver.presentation.screens.status
 
-import android.net.Uri
+
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,10 +22,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -39,6 +40,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -51,6 +53,8 @@ import com.google.accompanist.pager.rememberPagerState
 import com.mg.statussaver.presentation.screens.home.MediaType
 import com.mg.statussaver.presentation.screens.home.StatusItem
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -58,7 +62,7 @@ fun FullscreenVideoPlayer(videoPath: String) {
     val context = LocalContext.current
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
-            val mediaItem = MediaItem.fromUri(Uri.parse(videoPath))
+            val mediaItem = MediaItem.fromUri(videoPath.toUri())
             setMediaItem(mediaItem)
             prepare()
             playWhenReady = true
@@ -115,9 +119,7 @@ fun StatusViewerScreen(
     onShare: (StatusItem) -> Unit,
     onDownload: (StatusItem) -> Unit
 ) {
-
-    android.util.Log.d("StatusViewerScreen", "statusList: $statusList, initialIndex: $initialIndex")
-
+     val context = LocalContext.current
 
     if (statusList.isEmpty()) {
         Box(
@@ -211,7 +213,7 @@ fun StatusViewerScreen(
 
             IconButton(onClick = {
                 val item = statusList[pagerState.currentPage]
-                onShare(item)
+                shareToWhatsApp(context, item)
             }) {
                 Icon(
                     Icons.AutoMirrored.Outlined.Send,
@@ -247,4 +249,43 @@ fun StatusViewerScreen(
     }
 
     BackHandler(onBack = onBack)
+}
+
+
+fun shareToWhatsApp(context: Context, item: StatusItem) {
+    val uri = item.path.toUri()
+    val isDocumentUri = uri.scheme == "content"
+
+    val file: File = if (isDocumentUri) {
+        // Copy to cache
+        val inputStream = context.contentResolver.openInputStream(uri)
+        val ext = if (item.type == MediaType.VIDEO) ".mp4" else ".jpg"
+        val tempFile = File(context.cacheDir, "shared${System.currentTimeMillis()}$ext")
+        inputStream?.use { input ->
+            FileOutputStream(tempFile).use { output ->
+                input.copyTo(output)
+            }
+        }
+        tempFile
+    } else {
+        File(item.path)
+    }
+
+    val fileUri = androidx.core.content.FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        file
+    )
+
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = if (item.type == MediaType.VIDEO) "video/*" else "image/*"
+        putExtra(Intent.EXTRA_STREAM, fileUri)
+        setPackage("com.whatsapp")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    try {
+        context.startActivity(intent)
+    } catch (e: ActivityNotFoundException) {
+        Toast.makeText(context, "WhatsApp not installed", Toast.LENGTH_SHORT).show()
+    }
 }

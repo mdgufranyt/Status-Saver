@@ -200,8 +200,8 @@ fun SettingsScreen(navController: NavController) {
         // Rate App Section
         item {
             SettingsCard(
-                icon = Icons.Default.Star,
                 title = "Rate App",
+                icon = Icons.Default.Star,
                 subtitle = "Rate us positively",
                 onClick = { /* Rate app */ }
             )
@@ -214,7 +214,13 @@ fun SettingsScreen(navController: NavController) {
                 icon = Icons.Default.ChatBubble,
                 title = "Feedback",
                 subtitle = "Share your experience",
-                onClick = { /* Feedback */ }
+                onClick = {
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        "https://mobiforgetech.blogspot.com/p/privacy-policy.html#contact".toUri()
+                    )
+                    context.startActivity(intent)
+                }
             )
             Spacer(modifier = Modifier.height(12.dp))
         }

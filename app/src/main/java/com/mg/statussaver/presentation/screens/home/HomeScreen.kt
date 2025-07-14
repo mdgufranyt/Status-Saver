@@ -1,6 +1,6 @@
 package com.mg.statussaver.presentation.screens.home
 
-
+import androidx.compose.foundation.lazy.grid.itemsIndexed // <-- Add this import
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
@@ -84,6 +84,7 @@ import androidx.core.graphics.scale
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.mg.statussaver.presentation.screens.components.NativeAdCard
 import com.mg.statussaver.presentation.screens.permission.PermissionScreen
 import com.mg.statussaver.utils.BannerAdView
 import com.mg.statussaver.utils.RewardedAdManager
@@ -92,7 +93,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 
-val TealGreen = Color(0xFF00A884)
+val TealGreen = Color(0xFF25D366)
 
 /**
  * Shares a status file (image or video) using Android's share intent
@@ -305,7 +306,7 @@ fun HomeScreen(
     val context = LocalContext.current
     val activity = context as? Activity
     // State to track if ad should be shown
-    var isRewardedAdShown by rememberSaveable{ mutableStateOf(false) }
+    var isRewardedAdShown by rememberSaveable { mutableStateOf(false) }
     var shouldShowRewardedAd by remember { mutableStateOf(false) }
     var pendingStatusClick by remember { mutableStateOf<StatusItem?>(null) }
 
@@ -370,9 +371,6 @@ fun HomeScreen(
     }
 
 
-
-
-
     // Show rewarded ad when loaded
     LaunchedEffect(shouldShowRewardedAd) {
         if (shouldShowRewardedAd && activity != null && !isRewardedAdShown) {
@@ -404,7 +402,8 @@ fun HomeScreen(
                 "Images",
                 Icons.Outlined.Image,
                 statusCount.images,
-                Color(0xFF4CAF50)),
+                Color(0xFF4CAF50)
+            ),
 
             CategoryItemData(
                 "Videos",
@@ -445,18 +444,30 @@ fun HomeScreen(
                             )
                         )
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = TealGreen
-                    ),
+//                    colors = TopAppBarDefaults.topAppBarColors(
+//                        containerColor = TealGreen
+//                    ),
                     actions = {
                         IconButton(onClick = onNavigateToLanguage) {
-                            Icon(Icons.Rounded.Language, contentDescription = "Language", tint = Color.White)
+                            Icon(
+                                Icons.Rounded.Language,
+                                contentDescription = "Language",
+                                tint = Color.White
+                            )
                         }
                         IconButton(onClick = onNavigateToSettings) {
-                            Icon(Icons.Rounded.Settings, contentDescription = "Settings", tint = Color.White)
+                            Icon(
+                                Icons.Rounded.Settings,
+                                contentDescription = "Settings",
+                                tint = Color.White
+                            )
                         }
                         IconButton(onClick = onNavigateToDownloads) {
-                            Icon(Icons.Outlined.Download, contentDescription = "Downloads", tint = Color.White)
+                            Icon(
+                                Icons.Outlined.Download,
+                                contentDescription = "Downloads",
+                                tint = Color.White
+                            )
                         }
                     }
                 )
@@ -496,7 +507,11 @@ fun HomeScreen(
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                             IconButton(onClick = { viewModel.refreshStatuses() }) {
-                                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh", tint = TealGreen)
+                                Icon(
+                                    Icons.Outlined.Refresh,
+                                    contentDescription = "Refresh",
+                                    tint = TealGreen
+                                )
                             }
                         }
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -673,18 +688,51 @@ fun StatusContent(
         }
 
         is HomeUiState.Success -> {
+            val statusItems = uiState.statusItems
+            val adInterval = 5
+            val adUnitId = "ca-app-pub-3940256099942544/2247696110"
+            var isAdLoaded by remember { mutableStateOf(false) }
+
+            // Prepare mixed list: StatusItem or "AD"
+            val mixedList = remember(statusItems, isAdLoaded) {
+                val list = mutableListOf<Any>()
+                statusItems.forEachIndexed { i, item ->
+                    if ((i > 0) && (i % adInterval == 0) && isAdLoaded) {
+                        list.add("AD")
+                    }
+                    list.add(item)
+                }
+                list
+            }
+
+            // Ad loader composable (loads once and sets isAdLoaded)
+            LaunchedEffect(Unit) {
+                // Simulate ad loading, replace with your ad loading logic
+                isAdLoaded = true // Set to true when ad is loaded
+            }
+
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.height(620.dp)
             ) {
-                items(uiState.statusItems) { statusItem ->
-                    StatusItemCard(
-                        item = statusItem,
-                        onClick = onStatusClick,
-                        onDownloadClick = onDownloadClick
-                    )
+                items(mixedList.size) { index ->
+                    val item = mixedList[index]
+                    if (item == "AD") {
+                        NativeAdCard(
+                            modifier = Modifier
+                                .aspectRatio(0.75f)
+                                .padding(0.dp),
+                            adUnitId = adUnitId
+                        )
+                    } else if (item is StatusItem) {
+                        StatusItemCard(
+                            item = item,
+                            onClick = onStatusClick,
+                            onDownloadClick = onDownloadClick
+                        )
+                    }
                 }
             }
         }

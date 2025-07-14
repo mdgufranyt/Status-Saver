@@ -2,7 +2,6 @@ package com.mg.statussaver.utils
 
 
 import android.app.Activity
-import android.app.Application
 import android.content.Context
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -18,7 +17,7 @@ import com.google.android.gms.ads.appopen.AppOpenAd
 import com.google.android.gms.ads.rewarded.RewardItem
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
-import java.util.*
+import java.util.Date
 
 @Composable
 fun BannerAdView(
