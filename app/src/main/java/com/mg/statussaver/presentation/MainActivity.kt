@@ -12,7 +12,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
-import com.google.android.gms.ads.MobileAds
 import com.mg.statussaver.presentation.navigation.StatusSaverNavGraph
 import com.mg.statussaver.ui.theme.StatusSaverTheme
 import com.mg.statussaver.utils.PermissionManager
@@ -49,7 +48,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Initialize the Google Mobile Ads SDK on a background thread.
-//        MobileAds.initialize(this@MainActivity) {}
+//        MobileAds.initialize(this@MainActivity) {}              // Now it is implement into StatusSaverApplication, so we can remove this line
 
 
         setContent {

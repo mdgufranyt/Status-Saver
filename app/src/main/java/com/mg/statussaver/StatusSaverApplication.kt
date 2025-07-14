@@ -36,9 +36,7 @@ class StatusSaverApplication : Application(), Application.ActivityLifecycleCallb
         // Check karein ki kya app background se wapis aaya hai.
         if (appWasInBackground) {
             // Humne event ko "consume" kar liya hai, isliye flag ko turant reset karein.
-            // YAHI SABSE ZAROORI FIX HAI.
             appWasInBackground = false
-
             currentActivity?.let {
                 AppOpenAdManager.showAdIfAvailable(it)
             }

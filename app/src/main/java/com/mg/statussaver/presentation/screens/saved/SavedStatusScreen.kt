@@ -56,6 +56,7 @@ import com.mg.statussaver.presentation.screens.home.StatusItem
 import com.mg.statussaver.presentation.screens.home.VideoThumbnail
 import com.mg.statussaver.presentation.screens.home.shareStatusFile
 import com.mg.statussaver.ui.theme.TealPrimary
+import com.mg.statussaver.utils.BannerAdView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,7 +129,10 @@ fun SavedStatusScreen(navController: NavController) {
         }
 
         // Content Section
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .weight(1f)
+        ) {
             when {
                 isLoading -> {
                     Box(
@@ -200,6 +204,11 @@ fun SavedStatusScreen(navController: NavController) {
                 }
             }
         }
+        BannerAdView(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        )
     }
 }
 
