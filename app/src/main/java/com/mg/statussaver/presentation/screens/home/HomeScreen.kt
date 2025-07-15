@@ -1,6 +1,5 @@
 package com.mg.statussaver.presentation.screens.home
 
-import androidx.compose.foundation.lazy.grid.itemsIndexed // <-- Add this import
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
@@ -25,7 +24,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,7 +54,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -75,6 +72,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -84,6 +82,7 @@ import androidx.core.graphics.scale
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.mg.statussaver.R
 import com.mg.statussaver.presentation.screens.components.NativeAdCard
 import com.mg.statussaver.presentation.screens.permission.PermissionScreen
 import com.mg.statussaver.utils.BannerAdView
@@ -155,6 +154,7 @@ fun StatusItemCard(
     onDownloadClick: (StatusItem) -> Unit = {}
 ) {
     val context = LocalContext.current
+
 
     Box(
         modifier = Modifier
@@ -586,7 +586,8 @@ fun DirectChatCard(onDirectChatClick: () -> Unit) {
         colors = CardDefaults.cardColors(
             containerColor = TealGreen
         ),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -602,7 +603,7 @@ fun DirectChatCard(onDirectChatClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Direct Chat",
-                    color = Color.White,
+                    color = colorResource(id = R.color.white),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -634,7 +635,8 @@ fun ModernCategoryCard(
         colors = CardDefaults.cardColors(
             containerColor = category.color.copy(alpha = 0.1f)
         ),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
