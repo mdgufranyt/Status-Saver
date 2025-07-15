@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,7 +43,7 @@ fun SplashScreen(navController: NavController? = null) {
 
     // Auto-navigation effect - triggers after 1 second
     LaunchedEffect(Unit) {
-        delay(1000) // 1 seconds delay
+        delay(1600) // 1.6 seconds delay
 
         // Always navigate to home screen (no language selection for first time users)
         navController?.navigate("home") {
@@ -95,6 +98,21 @@ fun SplashScreen(navController: NavController? = null) {
                 fontWeight = FontWeight.Normal,
                 color = Color.White.copy(alpha = 0.9f),
                 textAlign = TextAlign.Center
+            )
+        }
+
+        // Progress bar at the bottom
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp) // Adjust bottom padding as needed
+        ) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth(0.5f) // Progress bar width (50% of screen)
+                    .height(6.dp),      // Height of the progress bar
+                color = Color.White,   // Progress bar color
+                trackColor = Color.White.copy(alpha = 0.3f)
             )
         }
     }
