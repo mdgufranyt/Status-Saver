@@ -65,6 +65,7 @@ fun SettingsScreen(navController: NavController) {
     val context = LocalContext.current
     var notificationEnabled by remember { mutableStateOf(false) }
     var autoSaveEnabled by remember { mutableStateOf(false) }
+    var showRateDialog by remember { mutableStateOf(false) }
 
     val requiredPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -192,7 +193,18 @@ fun SettingsScreen(navController: NavController) {
                 icon = Icons.Default.Share,
                 title = "Share App",
                 subtitle = "Spread the joy: Share with friends.",
-                onClick = { /* Share app */ }
+                onClick = {
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(
+                            Intent.EXTRA_TEXT,
+                            "Check out this app : https://play.google.com/store/apps/details?id=com.mg.statussaver"
+                        )
+                    }
+                    context.startActivity(
+                        Intent.createChooser(shareIntent, "Share App via")
+                    )
+                }
             )
             Spacer(modifier = Modifier.height(12.dp))
         }
@@ -203,7 +215,7 @@ fun SettingsScreen(navController: NavController) {
                 title = "Rate App",
                 icon = Icons.Default.Star,
                 subtitle = "Rate us positively",
-                onClick = { /* Rate app */ }
+                onClick = { showRateDialog = true }
             )
             Spacer(modifier = Modifier.height(12.dp))
         }
@@ -265,6 +277,16 @@ fun SettingsScreen(navController: NavController) {
                 )
             }
         }
+    }
+
+    if (showRateDialog) {
+        RateAppDialog(
+            onRate = { rating ->
+                showRateDialog = false
+                // Handle rating, e.g., open Play Store or show a thank you
+            },
+            onLater = { showRateDialog = false }
+        )
     }
 }
 
