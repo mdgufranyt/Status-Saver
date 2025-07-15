@@ -630,11 +630,12 @@ fun ModernCategoryCard(
 ) {
     Card(
         modifier = Modifier
-            .width(120.dp)
+            .width(109.dp)
+            .height(112.dp)
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = category.color.copy(alpha = 0.1f)
-        ),
+//        colors = CardDefaults.cardColors(
+//            containerColor = category.color.copy(alpha = 0.1f)
+//        ),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
