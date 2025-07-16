@@ -440,7 +440,7 @@ fun HomeScreen(
                             text = "Status Saver",
                             style = MaterialTheme.typography.headlineSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         )
                     },
@@ -452,21 +452,21 @@ fun HomeScreen(
                             Icon(
                                 Icons.Rounded.Language,
                                 contentDescription = "Language",
-                                tint = Color.White
+                                tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                         IconButton(onClick = onNavigateToSettings) {
                             Icon(
                                 Icons.Rounded.Settings,
                                 contentDescription = "Settings",
-                                tint = Color.White
+                                tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                         IconButton(onClick = onNavigateToDownloads) {
                             Icon(
                                 Icons.Outlined.Download,
                                 contentDescription = "Downloads",
-                                tint = Color.White
+                                tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
@@ -587,7 +587,7 @@ fun DirectChatCard(onDirectChatClick: () -> Unit) {
             containerColor = TealGreen
         ),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -609,7 +609,7 @@ fun DirectChatCard(onDirectChatClick: () -> Unit) {
                 )
                 Text(
                     text = "Send message without saving number",
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = Color.White,
                     fontSize = 14.sp
                 )
             }

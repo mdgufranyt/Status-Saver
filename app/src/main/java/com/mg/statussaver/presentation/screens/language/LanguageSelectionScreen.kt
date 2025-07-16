@@ -98,7 +98,7 @@ fun LanguageSelectionScreen(navController: NavController? = null) {
                     text = "Select Language",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = Color.White
                     )
                 )
 
@@ -106,7 +106,7 @@ fun LanguageSelectionScreen(navController: NavController? = null) {
                 Text(
                     text = "Choose your preferred language",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                        color = Color.White
                     ),
                     modifier = Modifier.padding(top = 4.dp)
                 )
