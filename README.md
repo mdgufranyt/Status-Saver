@@ -36,7 +36,7 @@ app/
          │   │        └── StatusRepositoryImpl.kt      # Implementation of status fetching, download, share
          │   ├── domain/
          │   │   └── repository/
-         │   │        └── StatusRepository.kt          # Domain layer interface for repository
+         │   |       └── StatusRepository.kt          # Domain layer interface for repository
          │   ├── di/
          │   │   ├── AppModule.kt                      # DI for utilities
          │   │   └── RepositoryModule.kt               # DI for repository binding
