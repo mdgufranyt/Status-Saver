@@ -18,6 +18,7 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.core.net.toUri
 
 @Singleton
 class StatusRepositoryImpl @Inject constructor(
@@ -117,12 +118,12 @@ class StatusRepositoryImpl @Inject constructor(
 
     private suspend fun handleContentUriDownload(status: StatusItem): StatusRepository.DownloadResult = withContext(Dispatchers.IO) {
         try {
-            val uri = Uri.parse(status.path)
+            val uri = status.path.toUri()
             android.util.Log.d("DownloadStatus", "Parsed URI: $uri")
 
             // Extract filename from the URI
             val fileName = extractFileNameFromUri(uri) ?: run {
-                android.util.Log.e("DownloadStatus", "Could not extract filename from URI")
+                android.util.Log.e("Download Status", "Could not extract filename from URI")
                 return@withContext StatusRepository.DownloadResult(
                     success = false,
                     errorMessage = "Could not determine filename from URI"

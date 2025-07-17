@@ -1,11 +1,18 @@
 package com.mg.statussaver.presentation.screens.home
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.os.Build
+import androidx.core.app.NotificationCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mg.statussaver.R
 import com.mg.statussaver.data.repository.StatusRepository
 import com.mg.statussaver.domain.usecase.SaveStatusUseCase
 import com.mg.statussaver.utils.PermissionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -140,19 +147,24 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+
+
+
 }
 
+
+
 sealed class HomeUiState {
-    object Loading : HomeUiState()
-    object Empty : HomeUiState()
+    data object Loading : HomeUiState()
+    data object Empty : HomeUiState()
     data class Success(val statusItems: List<StatusItem>) : HomeUiState()
     data class Error(val message: String) : HomeUiState()
 }
 
 sealed class PermissionState {
-    object Checking : PermissionState()
-    object Required : PermissionState()
-    object Granted : PermissionState()
+    data object Checking : PermissionState()
+    data object Required : PermissionState()
+    data object Granted : PermissionState()
 }
 
 data class StatusItem(
